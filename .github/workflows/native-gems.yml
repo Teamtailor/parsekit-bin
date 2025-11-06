@@ -14,9 +14,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: x86_64-darwin
+          - platform: x86_64-darwin-22.gem
             runner: macos-15-intel
-          - platform: arm64-darwin
+          - platform: arm64-darwin-23
             runner: macos-latest
           - platform: x86_64-linux
             runner: ubuntu-22.04
@@ -48,3 +48,33 @@ jobs:
           name: parsekit-${{ matrix.platform }}
           path: pkg/*${{ matrix.platform }}.gem
           if-no-files-found: error
+  publish:
+      name: Publish gems to GitHub Packages
+      needs: build
+      runs-on: ubuntu-latest
+      permissions:
+        contents: read
+        packages: write
+      steps:
+        - name: Download all gem artifacts
+          uses: actions/download-artifact@v4
+          with:
+            pattern: parsekit-*
+            merge-multiple: true
+            path: pkg
+
+        - name: Configure RubyGems credentials for GitHub Packages
+          run: |
+            mkdir -p ~/.gem
+            printf -- "---\n:github: Bearer %s\n" "$GITHUB_TOKEN" > ~/.gem/credentials
+            chmod 0600 ~/.gem/credentials
+
+        - name: Push gems to GitHub Packages
+          env:
+            OWNER: ${{ github.repository_owner }}
+          run: |
+            shopt -s nullglob
+            for g in pkg/*.gem; do
+              echo "Pushing $g"
+              gem push --key github --host "https://rubygems.pkg.github.com/${OWNER}" "$g"
+            done
