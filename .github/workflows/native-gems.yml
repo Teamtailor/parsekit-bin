@@ -1,0 +1,50 @@
+name: native-gems
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: x86_64-darwin
+            runner: macos-13
+          - platform: arm64-darwin
+            runner: macos-14
+          - platform: x86_64-linux
+            runner: ubuntu-22.04
+          - platform: aarch64-linux
+            runner: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby
+          bundler-cache: true
+
+      - name: Download tessdata for build
+        run: |
+          mkdir -p tessdata
+          curl -L https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata -o tessdata/eng.traineddata
+
+      - name: Build native gem
+        env:
+          TESSDATA_PREFIX: ${{ github.workspace }}/tessdata
+        run: |
+          bundle exec rake "native:parsekit:${{ matrix.platform }} gem"
+
+      - name: Upload gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: parsekit-${{ matrix.platform }}
+          path: pkg/*${{ matrix.platform }}.gem
+          if-no-files-found: error
