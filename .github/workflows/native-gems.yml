@@ -40,7 +40,7 @@ jobs:
         env:
           TESSDATA_PREFIX: ${{ github.workspace }}/tessdata
         run: |
-          bundle exec rake "native:parsekit:${{ matrix.platform }} gem"
+          bundle exec rake "native:parsekit:${{ matrix.platform }}"
 
       - name: Upload gem artifact
         uses: actions/upload-artifact@v4
