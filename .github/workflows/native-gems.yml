@@ -43,7 +43,7 @@ jobs:
       - name: Upload gem artifact
         uses: actions/upload-artifact@v4
         with:
-          name: parsekit-${{ matrix.platform }}
+          name: parsekit-bin-${{ matrix.platform }}
           path: pkg/*${{ matrix.platform }}.gem
           if-no-files-found: error
 
@@ -57,7 +57,7 @@ jobs:
       - name: Download all gem artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: parsekit-*
+          pattern: parsekit-bin-*
           merge-multiple: true
           path: pkg
 

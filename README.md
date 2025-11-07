@@ -1,6 +1,6 @@
 <img src="/docs/assets/parsekit-wide.png" alt="parsekit" height="80px">
 
-[![Gem Version](https://badge.fury.io/rb/parsekit.svg)](https://badge.fury.io/rb/parsekit)
+[![Gem Version](https://badge.fury.io/rb/parsekit-bin.svg)](https://badge.fury.io/rb/parsekit-bin)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Native Ruby bindings for the [parser-core](https://crates.io/crates/parser-core) Rust crate, providing high-performance document parsing and text extraction capabilities through Magnus. This gem wraps parser-core to extract text from PDFs, Office documents (DOCX, XLSX), images (with OCR), and more. Part of the ruby-nlp ecosystem.
@@ -19,7 +19,7 @@ Native Ruby bindings for the [parser-core](https://crates.io/crates/parser-core)
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'parsekit'
+gem 'parsekit-bin'
 ```
 
 And then execute:
@@ -29,7 +29,7 @@ And then execute:
 Or install it yourself as:
 
 ```bash
-gem install parsekit
+gem install parsekit-bin
 ```
 
 ### Requirements
@@ -158,7 +158,7 @@ By default, ParseKit bundles Tesseract for zero-dependency OCR support. Advanced
 
 **Using system Tesseract during installation:**
 ```bash
-gem install parsekit -- --no-default-features
+gem install parsekit-bin -- --no-default-features
 ```
 
 **For development with system Tesseract:**
