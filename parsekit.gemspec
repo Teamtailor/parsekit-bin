@@ -3,7 +3,7 @@
 require_relative "lib/parsekit/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "parsekit"
+  spec.name = "parsekit-bin"
   spec.version = ParseKit::VERSION
   spec.authors = ["Chris Petersen"]
   spec.email = ["chris@petersen.io"]
