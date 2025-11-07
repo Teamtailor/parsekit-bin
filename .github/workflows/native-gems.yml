@@ -15,6 +15,8 @@ jobs:
       matrix:
         include:
           - platform: arm64-darwin-23
+            runner: macos-13
+          - platform: arm64-darwin-25
             runner: macos-latest
           - platform: x86_64-linux
             runner: ubuntu-22.04
@@ -54,6 +56,14 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby
+          bundler-cache: true
+
       - name: Download all gem artifacts
         uses: actions/download-artifact@v4
         with:
@@ -61,13 +71,28 @@ jobs:
           merge-multiple: true
           path: pkg
 
+      - name: Download tessdata for build
+        run: |
+          mkdir -p tessdata
+          curl -L https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata -o tessdata/eng.traineddata
+
+      - name: Build universal gem
+        env:
+          TESSDATA_PREFIX: ${{ github.workspace }}/tessdata
+        run: bundle exec rake build
+
       - name: Publish to RubyGems
         env:
           GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for gem_file in pkg/*.gem; do
+          gems=(pkg/*.gem)
+          if [ ${#gems[@]} -eq 0 ]; then
+            echo "No gem files found in pkg/. Nothing to publish."
+            exit 1
+          fi
+          for gem_file in "${gems[@]}"; do
             echo "Pushing ${gem_file}"
             gem push "$gem_file"
           done
