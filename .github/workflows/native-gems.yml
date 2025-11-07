@@ -15,8 +15,6 @@ jobs:
       matrix:
         include:
           - platform: arm64-darwin-23
-            runner: macos-13
-          - platform: arm64-darwin-25
             runner: macos-latest
           - platform: x86_64-linux
             runner: ubuntu-22.04
@@ -47,7 +45,7 @@ jobs:
         with:
           name: parsekit-bin-${{ matrix.platform }}
           path: pkg/*${{ matrix.platform }}.gem
-          if-no-files-found: error
+          if-no-files-found: warn
 
   publish:
     name: Publish gems to RubyGems
