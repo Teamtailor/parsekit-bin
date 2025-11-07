@@ -46,35 +46,29 @@ jobs:
           name: parsekit-${{ matrix.platform }}
           path: pkg/*${{ matrix.platform }}.gem
           if-no-files-found: error
+
   publish:
-      name: Publish gems to GitHub Packages
-      needs: build
-      runs-on: ubuntu-latest
-      permissions:
-        contents: read
-        packages: write
-      steps:
-        - name: Download all gem artifacts
-          uses: actions/download-artifact@v4
-          with:
-            pattern: parsekit-*
-            merge-multiple: true
-            path: pkg
+    name: Publish gems to RubyGems
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+    steps:
+      - name: Download all gem artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: parsekit-*
+          merge-multiple: true
+          path: pkg
 
-        - name: Configure RubyGems credentials for GitHub Packages
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          run: |
-            mkdir -p ~/.gem
-            printf -- "---\n:github: Bearer %s\n" "$GITHUB_TOKEN" > ~/.gem/credentials
-            chmod 0600 ~/.gem/credentials
-
-        - name: Push gems to GitHub Packages
-          env:
-            OWNER: ${{ github.repository_owner }}
-          run: |
-            shopt -s nullglob
-            for g in pkg/*.gem; do
-              echo "Pushing $g"
-              gem push --key github --host "https://rubygems.pkg.github.com/Teamtailor" "$g"
-            done
+      - name: Publish to RubyGems
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for gem_file in pkg/*.gem; do
+            echo "Pushing ${gem_file}"
+            gem push "$gem_file"
+          done
