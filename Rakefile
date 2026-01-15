@@ -192,7 +192,7 @@ namespace :release do
     platforms = %w[x86_64-linux arm64-darwin x86_64-darwin aarch64-linux]
     platforms.each do |platform|
       puts "Building for #{platform}..."
-      ENV["RUBY_CC_VERSION"] = "3.0.0:3.1.0:3.2.0:3.3.0"
+      ENV["RUBY_CC_VERSION"] = "3.0.0:3.1.0:3.2.0:3.3.0:4.0.0"
       sh "rake native:#{platform} gem"
     end
   end
