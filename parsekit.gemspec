@@ -46,7 +46,7 @@ Gem::Specification.new do |spec|
   end
 
   # Runtime dependencies
-  spec.add_dependency "rb_sys", "~> 0.9"
+  spec.add_dependency "rb_sys", "~> 0.9", ">= 0.9.129"
 
   # Development dependencies
   spec.add_development_dependency "rake", "~> 13.0"
