@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Prints the newest upstream parsekit version that parsekit-bin has not fully
+# published yet, or nothing when every expected platform gem is on rubygems.org.
+
+require "json"
+require "net/http"
+
+EXPECTED_PLATFORMS = ["ruby", "x86_64-linux", "aarch64-linux", /\Aarm64-darwin/].freeze
+
+def versions(gem_name)
+  JSON.parse(Net::HTTP.get(URI("https://rubygems.org/api/v1/versions/#{gem_name}.json")))
+end
+
+upstream = versions("parsekit").map { |v| Gem::Version.new(v["number"]) }.reject(&:prerelease?).max
+published = versions("parsekit-bin").select { |v| v["number"] == upstream.to_s }.map { |v| v["platform"] }
+missing = EXPECTED_PLATFORMS.reject { |expected| published.any? { |platform| expected === platform } }
+
+if missing.empty?
+  warn "parsekit-bin #{upstream} is complete"
+else
+  warn "parsekit-bin #{upstream} is missing #{missing.join(", ")}"
+  puts upstream
+end
