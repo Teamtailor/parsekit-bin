@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Downloads scientist-labs/parsekit at the given tag into src/ and renames the gem to parsekit-bin.
+set -euo pipefail
+
+version="${1:?usage: bin/fetch-upstream <upstream version, e.g. 0.2.0>}"
+root="$(cd "$(dirname "$0")/.." && pwd)"
+tarball="https://github.com/scientist-labs/parsekit/archive/refs/tags/${version}.tar.gz"
+
+rm -rf "$root/src"
+mkdir -p "$root/src"
+curl -fsSL "$tarball" | tar -xz -C "$root/src" --strip-components=1
+
+rm -f "$root/src/Gemfile"
+
+gemspec="$root/src/parsekit.gemspec"
+
+patch() {
+  local from="$1" to="$2"
+  grep -qF -- "$from" "$gemspec" || { echo "fetch-upstream: '$from' not found in parsekit.gemspec at $version; upstream changed shape, update this script" >&2; exit 1; }
+  perl -pi -e 'BEGIN { ($f, $t) = @ARGV[0,1]; splice @ARGV, 0, 2 } s/\Q$f\E/$t/' "$from" "$to" "$gemspec"
+}
+
+patch 'spec.name = "parsekit"' 'spec.name = "parsekit-bin"'
+patch 'spec.add_dependency "rb_sys", "~> 0.9"' 'spec.add_dependency "rb_sys", "~> 0.9", ">= 0.9.129"'
+patch 'spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"' \
+  'spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata["github_repo"] = "ssh://github.com/Teamtailor/parsekit-bin"'
+
+echo "fetched parsekit $version into src/ as parsekit-bin"
