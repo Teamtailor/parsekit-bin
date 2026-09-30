@@ -27,9 +27,9 @@ jobs:
           - platform: arm64-darwin
             runner: macos-latest
           - platform: x86_64-linux
-            runner: ubuntu-24.04
+            runner: ubuntu-22.04
           - platform: aarch64-linux
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-22.04-arm
 
     steps:
       - uses: actions/checkout@v5
@@ -55,6 +55,14 @@ jobs:
 
       - name: Check gem name and version
         run: ls src/pkg/parsekit-bin-${{ inputs.version }}-*.gem
+
+      - name: Load gem on Debian bookworm
+        if: runner.os == 'Linux'
+        run: docker run --rm -v "$PWD/src/pkg:/pkg" ruby:4.0-slim-bookworm sh -c 'gem install /pkg/parsekit-bin-*.gem && ruby -e "require %q(parsekit); puts ParseKit.parse_bytes(%q(loaded on bookworm))"'
+
+      - name: Load gem
+        if: runner.os == 'macOS'
+        run: gem install src/pkg/parsekit-bin-*.gem && ruby -e 'require "parsekit"; puts ParseKit.parse_bytes("loaded on macOS")'
 
       - uses: actions/upload-artifact@v4
         with:

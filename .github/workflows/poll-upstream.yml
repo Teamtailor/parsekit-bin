@@ -7,21 +7,14 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     outputs:
       version: ${{ steps.compare.outputs.version }}
     steps:
+      - uses: actions/checkout@v5
+
       - id: compare
-        run: |
-          latest() { curl -fsSL "https://rubygems.org/api/v1/versions/$1/latest.json" | jq -r .version; }
-          upstream="$(latest parsekit)"
-          ours="$(latest parsekit-bin)"
-          if ruby -e 'exit Gem::Version.new(ARGV[0]) > Gem::Version.new(ARGV[1])' "$upstream" "$ours"; then
-            echo "parsekit $upstream is newer than parsekit-bin $ours"
-            echo "version=$upstream" >> "$GITHUB_OUTPUT"
-          else
-            echo "parsekit-bin $ours is up to date with parsekit $upstream"
-          fi
+        run: echo "version=$(bin/version-to-build)" >> "$GITHUB_OUTPUT"
 
   build:
     needs: check

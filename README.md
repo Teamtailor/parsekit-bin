@@ -8,11 +8,11 @@ No upstream source lives here. `bin/fetch-upstream <version>` downloads the upst
 
 ## Releasing
 
-`poll-upstream` runs daily and builds and publishes any upstream version newer than the latest `parsekit-bin`. To build a specific version by hand, run the `native-gems` workflow with the version as input.
+`poll-upstream` runs daily. It builds and publishes the newest upstream version whenever any of its expected platform gems (source, `x86_64-linux`, `aarch64-linux`, `arm64-darwin`) is missing from rubygems.org, so a partial publish is retried the next day. To build a specific version by hand, run the `native-gems` workflow with the version as input.
 
 Publishing uses RubyGems trusted publishing bound to this repo and `.github/workflows/native-gems.yml`; keep that filename. Already published platform gems are skipped, so re-running after a failed leg only pushes what is missing.
 
-Gems are built with Ruby `4.0` (see `RUBY_VERSION` in the workflow). Bump it together with the consuming apps; a prebuilt gem only installs on the Ruby ABI it was built for.
+Linux gems are built on `ubuntu-22.04` runners so they link against glibc 2.35 and load on Debian bookworm (2.36), which the consuming Docker images use; every leg installs and loads the built gem, the Linux ones inside `ruby:4.0-slim-bookworm`. Gems are built with Ruby `4.0` (see `RUBY_VERSION` in the workflow). Bump it together with the consuming apps; a prebuilt gem only installs on the Ruby ABI it was built for.
 
 ## Building locally
 
