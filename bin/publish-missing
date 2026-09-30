@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Pushes every gem in the given directory that rubygems.org does not already have.
+# A re-run after one failed matrix leg then publishes only the missing platform.
+
+require "json"
+require "set"
+require "net/http"
+require "rubygems/package"
+
+dir = ARGV.fetch(0) { abort "usage: bin/publish-missing <dir with .gem files>" }
+gems = Dir.glob(File.join(dir, "*.gem")).sort
+abort "no .gem files in #{dir}" if gems.empty?
+
+published =
+  JSON.parse(Net::HTTP.get(URI("https://rubygems.org/api/v1/versions/parsekit-bin.json")))
+    .map { |v| [v["number"], v["platform"]] }
+    .to_set
+
+gems.each do |path|
+  spec = Gem::Package.new(path).spec
+  key = [spec.version.to_s, spec.platform.to_s]
+  if published.include?(key)
+    puts "skip #{File.basename(path)}: already on rubygems.org"
+  else
+    puts "push #{File.basename(path)}"
+    system("gem", "push", path, exception: true)
+  end
+end

@@ -1,0 +1,34 @@
+name: poll-upstream
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.compare.outputs.version }}
+    steps:
+      - id: compare
+        run: |
+          latest() { curl -fsSL "https://rubygems.org/api/v1/versions/$1/latest.json" | jq -r .version; }
+          upstream="$(latest parsekit)"
+          ours="$(latest parsekit-bin)"
+          if ruby -e 'exit Gem::Version.new(ARGV[0]) > Gem::Version.new(ARGV[1])' "$upstream" "$ours"; then
+            echo "parsekit $upstream is newer than parsekit-bin $ours"
+            echo "version=$upstream" >> "$GITHUB_OUTPUT"
+          else
+            echo "parsekit-bin $ours is up to date with parsekit $upstream"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.version != ''
+    uses: ./.github/workflows/native-gems.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      version: ${{ needs.check.outputs.version }}

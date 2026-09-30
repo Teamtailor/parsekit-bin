@@ -1,195 +1,25 @@
-<img src="/docs/assets/parsekit-wide.png" alt="parsekit" height="80px">
+# parsekit-bin
 
-[![Gem Version](https://badge.fury.io/rb/parsekit-bin.svg)](https://badge.fury.io/rb/parsekit-bin)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Prebuilt native gems for [parsekit](https://github.com/scientist-labs/parsekit), published to rubygems.org as `parsekit-bin`. Same code, same version numbers, same `require "parsekit"`; only the gem name differs.
 
-Native Ruby bindings for the [parser-core](https://crates.io/crates/parser-core) Rust crate, providing high-performance document parsing and text extraction capabilities through Magnus. This gem wraps parser-core to extract text from PDFs, Office documents (DOCX, XLSX), images (with OCR), and more. Part of the ruby-nlp ecosystem.
+Upstream ships prebuilt gems for `arm64-darwin` and `x86_64-linux` but not `aarch64-linux`: its cross-compile of the bundled Tesseract fails. This repo builds each platform natively on a runner of that architecture instead, so `aarch64-linux` (our production and CI) installs without a Rust toolchain.
 
-## Features
+No upstream source lives here. `bin/fetch-upstream <version>` downloads the upstream tag tarball into `src/` and renames the gem in the gemspec. The workflow builds from that.
 
-- 📄 **Document Parsing**: Extract text from PDFs, Office documents (DOCX, XLSX)
-- 🖼️ **OCR Support**: Extract text from images using Tesseract OCR
-- 🚀 **High Performance**: Native Rust performance with Ruby convenience
-- 🔧 **Unified API**: Single interface for multiple document formats
-- 📦 **Cross-Platform**: Works on Linux, macOS, and Windows
-- 🧪 **Well Tested**: Comprehensive test suite with RSpec
+## Releasing
 
-## Installation
+`poll-upstream` runs daily and builds and publishes any upstream version newer than the latest `parsekit-bin`. To build a specific version by hand, run the `native-gems` workflow with the version as input.
 
-Add this line to your application's Gemfile:
+Publishing uses RubyGems trusted publishing bound to this repo and `.github/workflows/native-gems.yml`; keep that filename. Already published platform gems are skipped, so re-running after a failed leg only pushes what is missing.
 
-```ruby
-gem 'parsekit-bin'
+Gems are built with Ruby `4.0` (see `RUBY_VERSION` in the workflow). Bump it together with the consuming apps; a prebuilt gem only installs on the Ruby ABI it was built for.
+
+## Building locally
+
 ```
-
-And then execute:
-
-    $ bundle install
-
-Or install it yourself as:
-
-```bash
-gem install parsekit-bin
+bin/fetch-upstream 0.2.0
+bundle install
+mkdir -p tessdata && curl -fsSL https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata -o tessdata/eng.traineddata
+(cd src && TESSDATA_PREFIX="$PWD/../tessdata" bundle exec rake native gem)
+ls src/pkg
 ```
-
-### Requirements
-
-- Ruby >= 3.0.0
-- Rust toolchain (stable)
-- C compiler (for linking)
-
-That's it! ParseKit bundles all necessary libraries including Tesseract for OCR, so you don't need to install any system dependencies.
-
-## Usage
-
-### Basic Usage
-
-```ruby
-require 'parsekit'
-
-# Parse a PDF file
-text = ParseKit.parse_file("document.pdf")
-puts text  # Extracted text from the PDF
-
-# Parse an Excel file
-text = ParseKit.parse_file("spreadsheet.xlsx")
-puts text  # Extracted text from all sheets
-
-# Parse binary data directly
-file_data = File.binread("document.pdf")
-text = ParseKit.parse_bytes(file_data)
-puts text
-
-# Parse with a Parser instance
-parser = ParseKit::Parser.new
-text = parser.parse_file("report.docx")
-puts text
-```
-
-### Module-Level Convenience Methods
-
-```ruby
-# Parse files directly
-content = ParseKit.parse_file('document.pdf')
-
-# Parse bytes
-data = File.read('document.pdf', mode: 'rb')
-content = ParseKit.parse_bytes(data.bytes)
-
-# Check supported formats
-formats = ParseKit.supported_formats
-# => ["txt", "json", "xml", "html", "docx", "xlsx", "xls", "csv", "pdf", "png", "jpg", "jpeg", "tiff", "bmp"]
-
-# Check if a file is supported
-ParseKit.supports_file?('document.pdf')  # => true
-```
-
-### Configuration Options
-
-```ruby
-# Create parser with options
-parser = ParseKit::Parser.new(
-  strict_mode: true,
-  max_size: 50 * 1024 * 1024,  # 50MB limit
-  encoding: 'UTF-8'
-)
-
-# Or use the strict convenience method
-parser = ParseKit::Parser.strict
-```
-
-### Format-Specific Parsing
-
-```ruby
-parser = ParseKit::Parser.new
-
-# Direct access to format-specific parsers
-pdf_data = File.read('document.pdf', mode: 'rb').bytes
-pdf_text = parser.parse_pdf(pdf_data)
-
-image_data = File.read('image.png', mode: 'rb').bytes
-ocr_text = parser.ocr_image(image_data)
-
-excel_data = File.read('data.xlsx', mode: 'rb').bytes
-excel_text = parser.parse_xlsx(excel_data)
-```
-
-## Supported Formats
-
-| Format | Extensions | Method | Notes |
-|--------|------------|--------|-------|
-| PDF | .pdf | `parse_pdf` | Text extraction via MuPDF |
-| Word | .docx | `parse_docx` | Office Open XML format |
-| Excel | .xlsx, .xls | `parse_xlsx` | Both modern and legacy formats |
-| PowerPoint | .pptx | `parse_pptx` | Text extraction from slides and notes |
-| Images | .png, .jpg, .jpeg, .tiff, .bmp | `ocr_image` | OCR via bundled Tesseract |
-| JSON | .json | `parse_json` | Pretty-printed output |
-| XML/HTML | .xml, .html | `parse_xml` | Extracts text content |
-| Text | .txt, .csv, .md | `parse_text` | With encoding detection |
-
-## Performance
-
-ParseKit is built with performance in mind:
-
-- Native Rust implementation for speed
-- Statically linked C libraries (MuPDF, Tesseract) compiled with optimizations
-- Efficient memory usage with streaming where possible
-- Configurable size limits to prevent memory issues
-
-## Development
-
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests.
-
-To compile the Rust extension:
-
-```bash
-rake compile
-```
-
-To run tests with coverage:
-
-```bash
-rake dev:coverage
-```
-
-### OCR Mode Configuration
-
-By default, ParseKit bundles Tesseract for zero-dependency OCR support. Advanced users who already have Tesseract installed system-wide and want faster gem installation can use system mode:
-
-**Using system Tesseract during installation:**
-```bash
-gem install parsekit-bin -- --no-default-features
-```
-
-**For development with system Tesseract:**
-```bash
-rake compile CARGO_FEATURES=""  # Disables bundled-tesseract feature
-```
-
-**System Tesseract requirements:**
-- **macOS**: `brew install tesseract`
-- **Ubuntu/Debian**: `sudo apt-get install libtesseract-dev`
-- **Fedora/RHEL**: `sudo dnf install tesseract-devel`
-
-The bundled mode adds ~1-3 minutes to initial gem installation but provides a completely self-contained experience with no external dependencies.
-
-## Architecture
-
-ParseKit uses a hybrid Ruby/Rust architecture:
-
-- **Ruby Layer**: Provides convenient API and format detection
-- **Rust Layer**: Implements high-performance parsing using:
-  - MuPDF for PDF text extraction (statically linked)
-  - tesseract-rs for OCR (with bundled Tesseract by default)
-  - Pure Rust libraries for DOCX/XLSX parsing
-  - Magnus for Ruby-Rust FFI bindings
-
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/scientist-labs/parsekit.
-
-## License
-
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-Note: This gem includes statically linked versions of MuPDF (AGPL/Commercial) and Tesseract (Apache 2.0). Please review their respective licenses for compliance with your use case.
