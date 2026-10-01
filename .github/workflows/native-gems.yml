@@ -53,6 +53,10 @@ jobs:
           TESSDATA_PREFIX: ${{ github.workspace }}/tessdata
         run: bundle exec rake native gem
 
+      - name: Strip the macOS version from the darwin gem platform
+        if: runner.os == 'macOS'
+        run: bin/generalize-darwin-platform src/pkg/parsekit-bin-${{ inputs.version }}-arm64-darwin-*.gem
+
       - name: Check gem name and version
         run: ls src/pkg/parsekit-bin-${{ inputs.version }}-*.gem
 

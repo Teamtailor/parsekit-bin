@@ -1,0 +1,29 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Repackages a darwin gem under the versionless platform (arm64-darwin-23 becomes
+# arm64-darwin). RubyGems only accepts a versioned darwin platform on a Ruby built
+# on that same macOS version, so a locally compiled Ruby would otherwise fall back
+# to compiling the gem from source.
+
+require "rubygems/package"
+require "tmpdir"
+require "fileutils"
+
+path = File.expand_path(ARGV.fetch(0) { abort "usage: bin/generalize-darwin-platform <gem file>" })
+package = Gem::Package.new(path)
+spec = package.spec
+platform = spec.platform.to_s
+abort "#{File.basename(path)}: platform #{platform} has no darwin version to strip" unless platform.match?(/\A\w+-darwin-\d+\z/)
+
+spec.platform = Gem::Platform.new(platform.sub(/-\d+\z/, ""))
+generic_path = File.join(File.dirname(path), spec.file_name)
+
+Dir.mktmpdir do |dir|
+  package.extract_files(dir)
+  Dir.chdir(dir) { Gem::Package.build(spec) }
+  FileUtils.mv(File.join(dir, spec.file_name), generic_path)
+end
+File.delete(path)
+
+puts "#{File.basename(path)} -> #{File.basename(generic_path)}"
