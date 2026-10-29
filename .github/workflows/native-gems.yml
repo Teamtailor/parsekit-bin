@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Upstream parsekit version to build, e.g. 0.2.0"
+        description: "parsekit-bin version to build, e.g. 0.2.0, or 0.2.0.1 to rebuild upstream 0.2.0"
         required: true
         type: string
   workflow_call:
@@ -62,11 +62,11 @@ jobs:
 
       - name: Load gem on Debian bookworm
         if: runner.os == 'Linux'
-        run: docker run --rm -v "$PWD/src/pkg:/pkg" ruby:4.0-slim-bookworm sh -c 'gem install /pkg/parsekit-bin-*.gem && ruby -e "require %q(parsekit); puts ParseKit.parse_bytes(%q(loaded on bookworm))"'
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo ruby:4.0-slim-bookworm sh -c 'gem install src/pkg/parsekit-bin-*.gem && bin/check-pdf-text fixtures/helvetica.pdf'
 
       - name: Load gem
         if: runner.os == 'macOS'
-        run: gem install src/pkg/parsekit-bin-*.gem && ruby -e 'require "parsekit"; puts ParseKit.parse_bytes("loaded on macOS")'
+        run: gem install src/pkg/parsekit-bin-*.gem && bin/check-pdf-text fixtures/helvetica.pdf
 
       - uses: actions/upload-artifact@v4
         with:
