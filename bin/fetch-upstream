@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Downloads scientist-labs/parsekit at the given tag into src/ and renames the gem to parsekit-bin.
+# A fourth version segment rebuilds that upstream tag under its own version: 0.2.0.1 is upstream 0.2.0.
 set -euo pipefail
 
-version="${1:?usage: bin/fetch-upstream <upstream version, e.g. 0.2.0>}"
+version="${1:?usage: bin/fetch-upstream <parsekit-bin version, e.g. 0.2.0 or 0.2.0.1>}"
+upstream="$(echo "$version" | cut -d. -f1-3)"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-tarball="https://github.com/scientist-labs/parsekit/archive/refs/tags/${version}.tar.gz"
+tarball="https://github.com/scientist-labs/parsekit/archive/refs/tags/${upstream}.tar.gz"
 
 rm -rf "$root/src"
 mkdir -p "$root/src"
@@ -12,18 +14,30 @@ curl -fsSL "$tarball" | tar -xz -C "$root/src" --strip-components=1
 
 rm -f "$root/src/Gemfile"
 
-gemspec="$root/src/parsekit.gemspec"
-
 patch() {
-  local from="$1" to="$2"
-  grep -qF -- "$from" "$gemspec" || { echo "fetch-upstream: '$from' not found in parsekit.gemspec at $version; upstream changed shape, update this script" >&2; exit 1; }
-  perl -pi -e 'BEGIN { ($f, $t) = @ARGV[0,1]; splice @ARGV, 0, 2 } s/\Q$f\E/$t/' "$from" "$to" "$gemspec"
+  local file="$1" from="$2" to="$3"
+  grep -qF -- "$from" "$root/src/$file" || { echo "fetch-upstream: '$from' not found in $file at $upstream; upstream changed shape, update this script" >&2; exit 1; }
+  perl -pi -e 'BEGIN { ($f, $t) = @ARGV[0,1]; splice @ARGV, 0, 2 } s/\Q$f\E/$t/' "$from" "$to" "$root/src/$file"
 }
 
-patch 'spec.name = "parsekit"' 'spec.name = "parsekit-bin"'
-patch 'spec.add_dependency "rb_sys", "~> 0.9"' 'spec.add_dependency "rb_sys", "~> 0.9", ">= 0.9.129"'
-patch 'spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"' \
+patch parsekit.gemspec 'spec.name = "parsekit"' 'spec.name = "parsekit-bin"'
+patch parsekit.gemspec 'spec.add_dependency "rb_sys", "~> 0.9"' 'spec.add_dependency "rb_sys", "~> 0.9", ">= 0.9.129"'
+patch parsekit.gemspec 'spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"' \
   'spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
   spec.metadata["github_repo"] = "ssh://github.com/Teamtailor/parsekit-bin"'
 
-echo "fetched parsekit $version into src/ as parsekit-bin"
+if [ "$version" != "$upstream" ]; then
+  patch lib/parsekit/version.rb "VERSION = \"$upstream\"" "VERSION = \"$version\""
+fi
+
+# From mupdf 0.8 the 14 standard PDF fonts are a default feature, which upstream's
+# default-features = false drops; PDFs with a non-embedded Helvetica then parse as "".
+mupdf="$(perl -ne 'print $1 if /^mupdf = \{ version = "([^"]+)"/' "$root/src/ext/parsekit/Cargo.toml")"
+[ -n "$mupdf" ] || { echo "fetch-upstream: mupdf dependency not found in ext/parsekit/Cargo.toml at $upstream; upstream changed shape, update this script" >&2; exit 1; }
+if [ "$(printf '%s\n' 0.8 "$mupdf" | sort -V | head -n1)" = 0.8 ]; then
+  patch ext/parsekit/Cargo.toml \
+    "mupdf = { version = \"$mupdf\", default-features = false, features = [] }" \
+    "mupdf = { version = \"$mupdf\", default-features = false, features = [\"base14-fonts\"] }"
+fi
+
+echo "fetched parsekit $upstream into src/ as parsekit-bin $version"
